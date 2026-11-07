@@ -28,14 +28,15 @@ $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
 if ($path === '/api/wishes') {
     $list = getList();
     if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+        usort($list, fn($a, $b) => strcmp($b['createdAt'] ?? $b['updatedAt'], $a['createdAt'] ?? $a['updatedAt']));
         $public = array_map(fn($i) => ['id' => $i['id'], 'name' => $i['name'], 'wish' => $i['wish'], 'updatedAt' => $i['updatedAt']], $list);
         jsonResponse(200, $public);
     }
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $data = input(); $name = clean($data['name'] ?? '', 60); $wish = clean($data['wish'] ?? '', 500); $password = (string)($data['password'] ?? '');
-        if (!$name || !$wish || mb_strlen($password) < 4) jsonResponse(400, ['error' => 'Informe nome, desejo e uma senha de pelo menos 4 caracteres.']);
+        if (!$name || !$wish || mb_strlen($password) < 4) jsonResponse(400, ['error' => 'Informe nome, sugestão e uma senha de pelo menos 4 caracteres.']);
         foreach ($list as $item) if (mb_strtolower($item['name']) === mb_strtolower($name)) jsonResponse(409, ['error' => 'Este nome já existe. Use a opção de editar.']);
-        $list[] = ['id' => bin2hex(random_bytes(16)), 'name' => $name, 'wish' => $wish, 'passwordHash' => password_hash($password, PASSWORD_DEFAULT), 'updatedAt' => gmdate('c')];
+        $list[] = ['id' => bin2hex(random_bytes(16)), 'name' => $name, 'wish' => $wish, 'passwordHash' => password_hash($password, PASSWORD_DEFAULT), 'createdAt' => gmdate('c'), 'updatedAt' => gmdate('c')];
         saveList($list); jsonResponse(201, ['ok' => true]);
     }
 }
@@ -45,15 +46,15 @@ if (preg_match('#^/api/wishes/([a-f0-9]{32})$#', (string)$path, $matches) && $_S
         if ($item['id'] !== $matches[1]) continue;
         if (!password_verify((string)($data['password'] ?? ''), $item['passwordHash'])) jsonResponse(403, ['error' => 'Senha incorreta.']);
         $wish = clean($data['wish'] ?? '', 500);
-        if (!$wish) jsonResponse(400, ['error' => 'Informe o que você gostaria de ganhar.']);
+        if (!$wish) jsonResponse(400, ['error' => 'Informe sua sugestão.']);
         $item['wish'] = $wish; $item['updatedAt'] = gmdate('c'); saveList($list); jsonResponse(200, ['ok' => true]);
     }
     jsonResponse(404, ['error' => 'Cadastro não encontrado.']);
 }
 ?>
-<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow,noarchive"><title>Amigo Secreto</title><link rel="stylesheet" href="/styles.css"></head>
+<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow,noarchive"><title>Amigo Secreto</title><link rel="stylesheet" href="/public/styles.css"></head>
 <body><div class="snow snow-one">✦</div><div class="snow snow-two">✦</div><div class="snow snow-three">✦</div><main>
-<header class="hero"><div class="garland" aria-hidden="true"><i>●</i><i>●</i><i>●</i><i>●</i><i>●</i><i>●</i><i>●</i></div><p class="eyebrow">✦ CELEBRAÇÃO EM FAMÍLIA ✦</p><h1>Amigo<br><em>Secreto</em></h1><p>Uma lista de desejos para deixar cada presente ainda mais especial.</p><div class="hero-mark" aria-hidden="true">🎁</div></header>
-<section class="card wishes-card"><div class="section-heading"><div><p class="label">JÁ ESTÁ NA LISTA</p><h2>Desejos da família</h2></div><span class="mistletoe">❋</span></div><div id="list" class="wish-list" aria-live="polite"></div></section>
-<section class="card form-card"><div class="section-heading"><div><p class="label">É A SUA VEZ</p><h2 id="form-title">Adicionar meu desejo</h2></div><span class="mistletoe">✷</span></div><p class="hint" id="form-hint">Escolha uma senha para poder alterar seu desejo depois.</p><form id="wish-form"><input type="hidden" id="id"><label>Seu nome<input id="name" maxlength="60" required autocomplete="name" placeholder="Ex.: Carol"></label><label>O que você gostaria de ganhar?<textarea id="wish" maxlength="500" required placeholder="Ex.: Um livro de ficção, tamanho..."></textarea></label><label>Sua senha<input id="password" type="password" minlength="4" required autocomplete="new-password" placeholder="Mínimo de 4 caracteres"></label><button type="submit">Salvar desejo</button><button type="button" id="cancel" class="secondary" hidden>Cancelar edição</button><p id="feedback" role="status"></p></form></section>
-</main><script src="https://code.jquery.com/jquery-3.7.1.min.js"></script><script src="/app.js"></script></body></html>
+<header class="hero"><div class="garland" aria-hidden="true"><i>●</i><i>●</i><i>●</i><i>●</i><i>●</i><i>●</i><i>●</i></div><p class="eyebrow">✦ CELEBRAÇÃO EM FAMÍLIA ✦</p><h1>Amigo<br><em>Secreto</em></h1><p>Uma ajudinha para quem te tirou escolher um presente que combine com você.</p><p class="hero-note">Pense em sugestões simples e especiais, daquelas que deixam a troca ainda mais gostosa e divertida. O valor máximo do presente ficou combinado em R$ 150,00. 🎁</p><div class="hero-mark" aria-hidden="true">🎁</div></header>
+<section class="card wishes-card"><div class="section-heading"><div><p class="label">JÁ ESTÁ NA LISTA</p><h2>Sugestões da família</h2></div><span class="mistletoe">❋</span></div><div id="list" class="wish-list" aria-live="polite"></div></section>
+<section class="card form-card"><div class="section-heading"><div><p class="label">É A SUA VEZ</p><h2 id="form-title">Adicionar minha sugestão</h2></div><span class="mistletoe">✷</span></div><p class="hint" id="form-hint">Escolha uma senha para poder alterar sua sugestão depois.</p><form id="wish-form"><input type="hidden" id="id"><label>Seu nome<input id="name" maxlength="60" required autocomplete="name" placeholder="Ex.: Carol"></label><label>O que você gostaria de ganhar?<textarea id="wish" maxlength="500" required placeholder="Ex.: Um livro de ficção, tamanho..."></textarea></label><label>Sua senha<input id="password" type="password" minlength="4" required autocomplete="new-password" placeholder="Mínimo de 4 caracteres"></label><button type="submit">Salvar sugestão</button><button type="button" id="cancel" class="secondary" hidden>Cancelar edição</button><p id="feedback" role="status"></p></form></section>
+</main><script src="https://code.jquery.com/jquery-3.7.1.min.js"></script><script src="/public/app.js"></script></body></html>
